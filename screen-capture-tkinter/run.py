@@ -20,7 +20,7 @@ class Settings:
         self.save_format = "PNG"
         self.video_format = "MP4"
         self.save_dir = os.path.join(os.getcwd(), "saved")
-        self.video_duration_minutes = 1  # Default 1 minute
+        self.video_duration_seconds = 10  # Default 10 seconds for debugging
         
         # Resolution settings
         self.resolution_width = 1280  # 720p default
@@ -37,7 +37,7 @@ class Settings:
                     self.save_format = data.get('save_format', self.save_format)
                     self.video_format = data.get('video_format', self.video_format)
                     self.save_dir = data.get('save_dir', self.save_dir)
-                    self.video_duration_minutes = data.get('video_duration_minutes', self.video_duration_minutes)
+                    self.video_duration_seconds = data.get('video_duration_seconds', self.video_duration_seconds)
                     self.resolution_width = data.get('resolution_width', self.resolution_width)
                     self.resolution_height = data.get('resolution_height', self.resolution_height)
                     self.resolution_preset = data.get('resolution_preset', self.resolution_preset)
@@ -50,7 +50,7 @@ class Settings:
                 'save_format': self.save_format,
                 'video_format': self.video_format,
                 'save_dir': self.save_dir,
-                'video_duration_minutes': self.video_duration_minutes,
+                'video_duration_seconds': self.video_duration_seconds,
                 'resolution_width': self.resolution_width,
                 'resolution_height': self.resolution_height,
                 'resolution_preset': self.resolution_preset
@@ -99,9 +99,10 @@ class ScreenCaptureApp:
         self.recording_thread = None
         self.frames_captured = 0
         self.frames_per_second = 24  # Changed from frames_per_minute to frames_per_second
-        self.video_duration_minutes = self.settings.video_duration_minutes
+        self.video_duration_seconds = self.settings.video_duration_seconds
         self.captured_frames = []
         self.current_video_start_time = None
+        self.video_segments_created = 0  # Track number of video segments created
 
         style = ttk.Style()
         style.theme_use('clam')
@@ -176,6 +177,12 @@ class ScreenCaptureApp:
         timer_label = ttk.Label(video_frame, textvariable=self.timer_var,
                               font=('Arial', 10, 'bold'))
         timer_label.pack(pady=2)
+        
+        # Video recording progress
+        self.video_progress_var = tk.StringVar(value="Frames: 0 | Segments: 0")
+        video_progress_label = ttk.Label(video_frame, textvariable=self.video_progress_var,
+                                       font=('Arial', 8))
+        video_progress_label.pack(pady=2)
 
         # Settings and Exit buttons
         control_frame = ttk.Frame(left_frame)
@@ -239,8 +246,8 @@ class ScreenCaptureApp:
         # Video duration
         duration_frame = ttk.Frame(options_frame)
         duration_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(duration_frame, text="Video Duration (minutes):").pack(side=tk.LEFT)
-        duration_var = tk.StringVar(value=str(self.settings.video_duration_minutes))
+        ttk.Label(duration_frame, text="Video Duration (seconds):").pack(side=tk.LEFT)
+        duration_var = tk.StringVar(value=str(self.settings.video_duration_seconds))
         duration_entry = ttk.Entry(duration_frame, textvariable=duration_var, width=10)
         duration_entry.pack(side=tk.RIGHT)
         
@@ -350,16 +357,6 @@ class ScreenCaptureApp:
             print(f"Active window capture failed: {e}")
             self.status_var.set("Active window capture failed")
 
-    def start_video_recording():
-        """Start video recording (placeholder for now)"""
-        # Placeholder: In a real app, use opencv or similar
-        return True
-
-    def stop_video_recording():
-        """Stop video recording (placeholder for now)"""
-        # Placeholder: In a real app, stop recording and save video
-        return "demo_video.mp4"
-
     def _auto_save_screenshot(self, capture_type):
         """Automatically save screenshot with timestamped filename"""
         if self.last_image is None:
@@ -434,11 +431,13 @@ class ScreenCaptureApp:
             self.current_video_start_time = time.time()
             self.frames_captured = 0
             self.captured_frames = []
+            self.segments_created = 0  # Initialize segments counter
             
             # Update UI
             self.record_btn.config(state='disabled')
             self.stop_btn.config(state='normal')
             self.recording_status_var.set("Recording...")
+            self.video_progress_var.set("Frames: 0 | Segments: 0")
             
             # Start recording thread
             self.recording_thread = threading.Thread(target=self._recording_loop, daemon=True)
@@ -447,7 +446,7 @@ class ScreenCaptureApp:
             # Start timer update
             self._update_timer()
             
-            self.status_var.set(f"Recording started - capturing {self.frames_per_second} frames per second, saving {self.video_duration_minutes}-minute segments")
+            self.status_var.set(f"Recording started - capturing {self.frames_per_second} fps, saving {self.video_duration_seconds}-second segments")
 
     def stop_recording(self):
         """Stop video recording and save final video segment"""
@@ -485,9 +484,14 @@ class ScreenCaptureApp:
                 self.captured_frames.append(frame_path)
                 self.frames_captured += 1
                 
-                # Check if we need to save a video segment (every X minutes = Y frames)
-                frames_per_video = self.frames_per_second * 60 * self.video_duration_minutes  # 24 fps * 60 seconds * minutes
+                # Update progress display
+                segments_created = getattr(self, 'segments_created', 0)
+                self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {segments_created}")
+                
+                # Check if we need to save a video segment (every X seconds = Y frames)
+                frames_per_video = self.frames_per_second * self.video_duration_seconds  # 24 fps * seconds
                 if len(self.captured_frames) >= frames_per_video:
+                    self.status_var.set(f"Saving video segment {segments_created + 1}...")
                     self._save_video_segment()
                     self.current_video_start_time = time.time()
                 
@@ -496,6 +500,7 @@ class ScreenCaptureApp:
                 
             except Exception as e:
                 print(f"Error in recording loop: {e}")
+                self.status_var.set(f"Recording error: {str(e)}")
                 time.sleep(1)
 
     def _save_frame(self, screenshot, timestamp):
@@ -548,39 +553,83 @@ class ScreenCaptureApp:
             return
         
         try:
+            print(f"Creating video from {len(self.captured_frames)} frames...")
+            self.status_var.set(f"Creating video from {len(self.captured_frames)} frames...")
+            
             # Get the first frame to determine video dimensions
             first_frame = cv2.imread(self.captured_frames[0])
             if first_frame is None:
                 raise Exception("Could not read first frame")
             
             height, width, layers = first_frame.shape
+            print(f"Video dimensions: {width}x{height}")
             
-            # Create video writer
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 codec
-            fps = self.frames_per_second  # Use the configured frame rate
-            video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+            # Try different codecs in order of preference
+            codecs_to_try = [
+                ('mp4v', '.mp4'),
+                ('XVID', '.avi'),
+                ('MJPG', '.avi'),
+                ('H264', '.mp4')
+            ]
             
-            if not video_writer.isOpened():
-                raise Exception("Could not create video writer")
+            video_writer = None
+            for codec, ext in codecs_to_try:
+                try:
+                    print(f"Trying codec: {codec}")
+                    fourcc = cv2.VideoWriter_fourcc(*codec)
+                    temp_path = output_path.replace('.mp4', ext)
+                    video_writer = cv2.VideoWriter(temp_path, fourcc, self.frames_per_second, (width, height))
+                    
+                    if video_writer.isOpened():
+                        print(f"Successfully opened video writer with codec: {codec}")
+                        output_path = temp_path
+                        break
+                    else:
+                        video_writer.release()
+                        video_writer = None
+                except Exception as e:
+                    print(f"Failed with codec {codec}: {e}")
+                    if video_writer:
+                        video_writer.release()
+                        video_writer = None
+            
+            if video_writer is None:
+                raise Exception("Could not create video writer with any codec")
             
             # Add each frame to the video
-            for frame_path in self.captured_frames:
+            frames_written = 0
+            for i, frame_path in enumerate(self.captured_frames):
                 if os.path.exists(frame_path):
                     frame = cv2.imread(frame_path)
                     if frame is not None:
                         video_writer.write(frame)
+                        frames_written += 1
+                        
+                        # Update progress every 10 frames
+                        if i % 10 == 0:
+                            progress = (i / len(self.captured_frames)) * 100
+                            self.status_var.set(f"Creating video: {progress:.1f}% ({frames_written}/{len(self.captured_frames)} frames)")
+                            self.root.update()
             
             # Release video writer
             video_writer.release()
             
             # Verify video was created
             if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                self.status_var.set(f"Video created successfully: {os.path.basename(output_path)}")
+                file_size = os.path.getsize(output_path) / (1024 * 1024)  # MB
+                self.status_var.set(f"Video created: {os.path.basename(output_path)} ({file_size:.1f} MB)")
+                print(f"Video created successfully: {output_path} ({file_size:.1f} MB)")
+                
+                # Update video progress
+                segments_created = getattr(self, 'segments_created', 0) + 1
+                self.segments_created = segments_created
+                self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {segments_created}")
             else:
                 raise Exception("Video file was not created or is empty")
                 
         except Exception as e:
             print(f"Error creating video: {e}")
+            self.status_var.set(f"Video creation failed: {str(e)}")
             # Fallback: save frames with instructions
             self._save_frames_with_instructions()
             raise
@@ -667,8 +716,8 @@ class ScreenCaptureApp:
         # Video duration
         duration_frame = ttk.Frame(main_frame)
         duration_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(duration_frame, text="Video Duration (minutes):").pack(side=tk.LEFT)
-        duration_var = tk.StringVar(value=str(self.settings.video_duration_minutes))
+        ttk.Label(duration_frame, text="Video Duration (seconds):").pack(side=tk.LEFT)
+        duration_var = tk.StringVar(value=str(self.settings.video_duration_seconds))
         duration_entry = ttk.Entry(duration_frame, textvariable=duration_var, width=10)
         duration_entry.pack(side=tk.RIGHT)
         
@@ -729,8 +778,8 @@ class ScreenCaptureApp:
             try:
                 # Validate duration
                 duration = int(duration_var.get())
-                if duration < 1 or duration > 60:
-                    messagebox.showerror("Error", "Video duration must be between 1 and 60 minutes")
+                if duration < 1 or duration > 3600:
+                    messagebox.showerror("Error", "Video duration must be between 1 and 3600 seconds (1 hour)")
                     return
                 
                 # Validate resolution
@@ -751,13 +800,13 @@ class ScreenCaptureApp:
                 self.settings.save_format = format_var.get()
                 self.settings.video_format = video_format_var.get()
                 self.settings.save_dir = save_dir_var.get()
-                self.settings.video_duration_minutes = duration
+                self.settings.video_duration_seconds = duration
                 self.settings.resolution_width = width
                 self.settings.resolution_height = height
                 self.settings.resolution_preset = preset
                 
                 # Update app variables
-                self.video_duration_minutes = duration
+                self.video_duration_seconds = duration
                 self.format_var.set(format_var.get())
                 self.video_format_var.set(video_format_var.get())
                 self.save_dir_var.set(save_dir_var.get())
