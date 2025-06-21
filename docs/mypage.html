@@ -67,6 +67,56 @@
             transform: translateY(-2px);
         }
 
+        .apps-section {
+            margin-top: 50px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .apps-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .app-card {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+            display: block;
+        }
+
+        .app-card:hover {
+            border-color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .app-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .app-description {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            line-height: 1.5;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 30px 20px;
@@ -80,6 +130,19 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .app-card {
+                padding: 20px;
+            }
+
+            .apps-title {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
@@ -88,6 +151,36 @@
         <h1>My Page</h1>
         <p>Welcome to my personal page! This is a custom page within The Human AI Narratives project.</p>
         <p>Here you can add your own content, projects, or anything you'd like to showcase.</p>
+        
+        <div class="apps-section">
+            <h2 class="apps-title">My Apps</h2>
+            <div class="apps-grid">
+                <a href="index.html" class="app-card">
+                    <div class="app-name">AI Chat Assistant</div>
+                    <div class="app-description">Intelligent conversational AI for seamless interactions and assistance.</div>
+                </a>
+                <a href="index.html" class="app-card">
+                    <div class="app-name">Project Manager</div>
+                    <div class="app-description">Organize and track your projects with intuitive task management.</div>
+                </a>
+                <a href="index.html" class="app-card">
+                    <div class="app-name">Code Editor</div>
+                    <div class="app-description">Advanced code editing with syntax highlighting and debugging tools.</div>
+                </a>
+                <a href="index.html" class="app-card">
+                    <div class="app-name">Data Visualizer</div>
+                    <div class="app-description">Transform complex data into beautiful, interactive visualizations.</div>
+                </a>
+                <a href="index.html" class="app-card">
+                    <div class="app-name">Note Taker</div>
+                    <div class="app-description">Capture ideas and thoughts with rich text formatting and organization.</div>
+                </a>
+                <a href="index.html" class="app-card">
+                    <div class="app-name">File Converter</div>
+                    <div class="app-description">Convert files between different formats quickly and efficiently.</div>
+                </a>
+            </div>
+        </div>
         
         <div class="nav-links">
             <a href="index.html" class="nav-link">← Back to Home</a>
