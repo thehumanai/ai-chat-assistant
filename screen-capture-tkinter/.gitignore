@@ -101,6 +101,7 @@ dmypy.json
 
 # Screen capture specific
 saved/
+temp_frames/
 *.png
 *.jpg
 *.jpeg
