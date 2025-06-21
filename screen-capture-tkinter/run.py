@@ -421,6 +421,12 @@ This would open a proper settings dialog in a real implementation."""
 def main():
     root = tk.Tk()
     app = ScreenCaptureApp(root)
+    # Set window size and position: 500px width, 800px height, bottom-left
+    width = 500
+    height = 800
+    x = 0
+    y = root.winfo_screenheight() - height
+    root.geometry(f"{width}x{height}+{x}+{y}")
     root.mainloop()
 
 if __name__ == "__main__":
