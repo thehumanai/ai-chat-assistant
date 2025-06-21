@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .chat-header .status {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.ai .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e1e5e9;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        .file-attachment {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-icon {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .file-size {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .file-upload-area {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-upload-btn {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #6c757d;
+        }
+
+        .file-upload-btn:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+            color: #667eea;
+        }
+
+        .file-upload-btn.dragover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .uploaded-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .uploaded-file {
+            background: #e9ecef;
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .remove-file {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .message-input {
+            flex: 1;
+            border: 2px solid #e1e5e9;
+            border-radius: 25px;
+            padding: 15px 20px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: transform 0.2s ease;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #e1e5e9;
+            margin-bottom: 20px;
+            max-width: 70%;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 95vh;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .input-wrapper {
+                flex-direction: column;
+            }
+
+            .send-btn {
+                align-self: flex-end;
+            }
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #6c757d;
+            margin: 40px 0;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 AI Chat Assistant</h1>
+            <div class="status">Ready to help you with files and conversations</div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                👋 Welcome! I'm your AI assistant. You can chat with me and upload files for analysis.
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="file-upload-area">
+                <div class="uploaded-files" id="uploadedFiles"></div>
+                <div class="file-upload-btn" id="fileUploadBtn">
+                    📎 Click to upload files or drag and drop
+                </div>
+                <input type="file" id="fileInput" class="file-input" multiple>
+            </div>
+            
+            <div class="input-wrapper">
+                <textarea 
+                    class="message-input" 
+                    id="messageInput" 
+                    placeholder="Type your message here..."
+                    rows="1"
+                ></textarea>
+                <button class="send-btn" id="sendBtn">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ChatApp {
+            constructor() {
+                this.messages = [];
+                this.uploadedFiles = [];
+                this.isTyping = false;
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.autoResizeTextarea();
+            }
+
+            initializeElements() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendBtn = document.getElementById('sendBtn');
+                this.fileInput = document.getElementById('fileInput');
+                this.fileUploadBtn = document.getElementById('fileUploadBtn');
+                this.uploadedFilesContainer = document.getElementById('uploadedFiles');
+            }
+
+            bindEvents() {
+                this.sendBtn.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                this.fileUploadBtn.addEventListener('click', () => this.fileInput.click());
+                
+                // Drag and drop functionality
+                this.fileUploadBtn.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.fileUploadBtn.classList.add('dragover');
+                });
+
+                this.fileUploadBtn.addEventListener('dragleave', () => {
+                    this.fileUploadBtn.classList.remove('dragover');
+                });
+
+                this.fileUploadBtn.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.fileUploadBtn.classList.remove('dragover');
+                    const files = Array.from(e.dataTransfer.files);
+                    this.addFiles(files);
+                });
+            }
+
+            autoResizeTextarea() {
+                this.messageInput.addEventListener('input', () => {
+                    this.messageInput.style.height = 'auto';
+                    this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
+                });
+            }
+
+            handleFileSelect(event) {
+                const files = Array.from(event.target.files);
+                this.addFiles(files);
+            }
+
+            addFiles(files) {
+                files.forEach(file => {
+                    if (!this.uploadedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                        this.uploadedFiles.push(file);
+                    }
+                });
+                this.updateFileDisplay();
+            }
+
+            removeFile(index) {
+                this.uploadedFiles.splice(index, 1);
+                this.updateFileDisplay();
+            }
+
+            updateFileDisplay() {
+                this.uploadedFilesContainer.innerHTML = '';
+                this.uploadedFiles.forEach((file, index) => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'uploaded-file';
+                    fileElement.innerHTML = `
+                        <span>📄</span>
+                        <div>
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${this.formatFileSize(file.size)}</div>
+                        </div>
+                        <button class="remove-file" onclick="chatApp.removeFile(${index})">×</button>
+                    `;
+                    this.uploadedFilesContainer.appendChild(fileElement);
+                });
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message && this.uploadedFiles.length === 0) return;
+
+                // Add user message
+                this.addMessage('user', message, this.uploadedFiles);
+                
+                // Clear input
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+                this.uploadedFiles = [];
+                this.updateFileDisplay();
+
+                // Show typing indicator
+                this.showTypingIndicator();
+
+                // Simulate AI response (replace with actual AI API call)
+                setTimeout(() => {
+                    this.hideTypingIndicator();
+                    this.generateAIResponse(message);
+                }, 1000 + Math.random() * 2000);
+            }
+
+            addMessage(sender, content, files = []) {
+                const message = {
+                    id: Date.now(),
+                    sender,
+                    content,
+                    files: [...files],
+                    timestamp: new Date()
+                };
+
+                this.messages.push(message);
+                this.displayMessage(message);
+                this.scrollToBottom();
+            }
+
+            displayMessage(message) {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${message.sender}`;
+                
+                const avatar = message.sender === 'user' ? '👤' : '🤖';
+                const avatarClass = message.sender === 'user' ? 'user' : 'ai';
+                
+                let filesHTML = '';
+                if (message.files && message.files.length > 0) {
+                    filesHTML = message.files.map(file => `
+                        <div class="file-attachment">
+                            <div class="file-icon">📄</div>
+                            <div class="file-info">
+                                <div class="file-name">${file.name}</div>
+                                <div class="file-size">${this.formatFileSize(file.size)}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                messageElement.innerHTML = `
+                    <div class="message-avatar ${avatarClass}">${avatar}</div>
+                    <div class="message-content">
+                        ${message.content ? `<div>${this.escapeHtml(message.content)}</div>` : ''}
+                        ${filesHTML}
+                        <div class="message-time">${this.formatTime(message.timestamp)}</div>
+                    </div>
+                `;
+
+                this.chatMessages.appendChild(messageElement);
+            }
+
+            showTypingIndicator() {
+                this.isTyping = true;
+                const typingElement = document.createElement('div');
+                typingElement.className = 'message ai typing-indicator';
+                typingElement.id = 'typingIndicator';
+                typingElement.innerHTML = `
+                    <div class="message-avatar ai">🤖</div>
+                    <div class="message-content">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>AI is typing</span>
+                            <div class="typing-dots">
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.chatMessages.appendChild(typingElement);
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                this.isTyping = false;
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+
+            generateAIResponse(userMessage) {
+                // Simulate AI responses based on user input
+                let response = '';
+                
+                if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
+                    response = "Hello! I'm your AI assistant. How can I help you today?";
+                } else if (userMessage.toLowerCase().includes('file') || userMessage.toLowerCase().includes('upload')) {
+                    response = "I can see you've uploaded some files! I can help you analyze documents, images, or any other files you share with me. What would you like me to do with them?";
+                } else if (userMessage.toLowerCase().includes('help')) {
+                    response = "I'm here to help! You can ask me questions, upload files for analysis, or just have a conversation. I can assist with various tasks including document analysis, coding help, writing assistance, and more.";
+                } else if (userMessage.toLowerCase().includes('thank')) {
+                    response = "You're welcome! I'm always here to help. Is there anything else you'd like to discuss or any files you'd like me to analyze?";
+                } else {
+                    const responses = [
+                        "That's an interesting point! I'd be happy to discuss this further or help you with any specific questions you might have.",
+                        "I understand what you're saying. Is there anything specific you'd like me to help you with regarding this topic?",
+                        "Thanks for sharing that with me. I'm here to assist you with any questions or tasks you might have.",
+                        "I appreciate your message. How can I best help you today?",
+                        "That's a great question! Let me know if you need any clarification or have additional questions."
+                    ];
+                    response = responses[Math.floor(Math.random() * responses.length)];
+                }
+
+                this.addMessage('ai', response);
+            }
+
+            formatTime(date) {
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            scrollToBottom() {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+        }
+
+        // Initialize the chat app
+        const chatApp = new ChatApp();
+    </script>
+</body>
+</html>
