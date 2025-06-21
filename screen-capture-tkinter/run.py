@@ -5,24 +5,84 @@ import os
 import time
 from datetime import datetime
 
-# --- Capture Logic Placeholder (to be implemented) ---
+# Import pyautogui for real screen capture
+try:
+    import pyautogui
+    SCREEN_CAPTURE_AVAILABLE = True
+except ImportError:
+    SCREEN_CAPTURE_AVAILABLE = False
+    print("Warning: pyautogui not available, using placeholder captures")
+
+# --- Real Capture Logic ---
 def capture_full_screen():
-    # Placeholder: In a real app, use pyautogui or PIL.ImageGrab
-    return Image.new('RGB', (400, 200), color='gray')
+    """Capture the entire screen"""
+    if SCREEN_CAPTURE_AVAILABLE:
+        try:
+            # Add a small delay to let the UI update
+            time.sleep(0.1)
+            screenshot = pyautogui.screenshot()
+            return screenshot
+        except Exception as e:
+            print(f"Full screen capture failed: {e}")
+            # Fallback to placeholder
+            return Image.new('RGB', (400, 200), color='gray')
+    else:
+        # Fallback to placeholder
+        return Image.new('RGB', (400, 200), color='gray')
 
 def capture_selected_area():
-    # Placeholder: In a real app, implement area selection
-    return Image.new('RGB', (200, 100), color='lightblue')
+    """Capture a selected area (simplified to center region for now)"""
+    if SCREEN_CAPTURE_AVAILABLE:
+        try:
+            # For now, capture center 800x600 region
+            # In a full implementation, this would show a selection overlay
+            screen_width, screen_height = pyautogui.size()
+            left = (screen_width - 800) // 2
+            top = (screen_height - 600) // 2
+            right = left + 800
+            bottom = top + 600
+            
+            time.sleep(0.1)
+            screenshot = pyautogui.screenshot(region=(left, top, 800, 600))
+            return screenshot
+        except Exception as e:
+            print(f"Selected area capture failed: {e}")
+            return Image.new('RGB', (200, 100), color='lightblue')
+    else:
+        return Image.new('RGB', (200, 100), color='lightblue')
 
 def capture_active_window():
-    # Placeholder: In a real app, implement active window capture
-    return Image.new('RGB', (300, 150), color='lightgreen')
+    """Capture the active window"""
+    if SCREEN_CAPTURE_AVAILABLE:
+        try:
+            # Get active window info
+            active_window = pyautogui.getActiveWindow()
+            if active_window:
+                # Capture the window region
+                time.sleep(0.1)
+                screenshot = pyautogui.screenshot(region=(
+                    active_window.left, 
+                    active_window.top, 
+                    active_window.width, 
+                    active_window.height
+                ))
+                return screenshot
+            else:
+                # Fallback to full screen if no active window
+                return capture_full_screen()
+        except Exception as e:
+            print(f"Active window capture failed: {e}")
+            return Image.new('RGB', (300, 150), color='lightgreen')
+    else:
+        return Image.new('RGB', (300, 150), color='lightgreen')
 
 def start_video_recording():
+    """Start video recording (placeholder for now)"""
     # Placeholder: In a real app, use opencv or similar
     return True
 
 def stop_video_recording():
+    """Stop video recording (placeholder for now)"""
     # Placeholder: In a real app, stop recording and save video
     return "demo_video.mp4"
 
@@ -30,8 +90,9 @@ def stop_video_recording():
 class Settings:
     def __init__(self):
         self.save_format = 'PNG'
-        # Create screen-capture directory in user's home directory
-        self.save_dir = os.path.join(os.path.expanduser('~'), 'screen-capture')
+        # Create saved directory in current working directory
+        current_dir = os.getcwd()
+        self.save_dir = os.path.join(current_dir, 'saved')
         # Ensure the directory exists
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
@@ -53,10 +114,10 @@ class ScreenCaptureApp:
 
         style = ttk.Style()
         style.theme_use('clam')
-
+        
         main_frame = ttk.Frame(root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
-
+        
         # Title
         title_label = ttk.Label(main_frame, text="Screen Capture & Recording App", font=('Arial', 18, 'bold'))
         title_label.pack(pady=(0, 10))
@@ -75,7 +136,7 @@ class ScreenCaptureApp:
         options_frame = ttk.Frame(main_frame)
         options_frame.pack(fill=tk.X, pady=(10, 0))
         self._add_options(options_frame)
-
+        
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
@@ -181,19 +242,59 @@ class ScreenCaptureApp:
 
     # --- Image Capture Actions ---
     def capture_full_screen(self):
+        self.status_var.set("Capturing full screen...")
+        self.root.update()
         self.last_image = capture_full_screen()
         self._update_preview()
-        self.status_var.set("Captured full screen")
+        self._auto_save_screenshot("full_screen")
+        self.status_var.set("Captured and saved full screen")
 
     def capture_selected_area(self):
+        self.status_var.set("Capturing selected area...")
+        self.root.update()
         self.last_image = capture_selected_area()
         self._update_preview()
-        self.status_var.set("Captured selected area")
+        self._auto_save_screenshot("selected_area")
+        self.status_var.set("Captured and saved selected area (center region)")
 
     def capture_active_window(self):
+        self.status_var.set("Capturing active window...")
+        self.root.update()
         self.last_image = capture_active_window()
         self._update_preview()
-        self.status_var.set("Captured active window")
+        self._auto_save_screenshot("active_window")
+        self.status_var.set("Captured and saved active window")
+
+    def _auto_save_screenshot(self, capture_type):
+        """Automatically save screenshot with timestamped filename"""
+        if self.last_image is None:
+            return
+            
+        try:
+            # Create readable timestamped filename
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            filename = f"screenshot_{timestamp}.{self.format_var.get().lower()}"
+            filepath = os.path.join(self.save_dir_var.get(), filename)
+            
+            # Debug info
+            print(f"Saving to: {filepath}")
+            print(f"Save directory: {self.save_dir_var.get()}")
+            print(f"Directory exists: {os.path.exists(self.save_dir_var.get())}")
+            
+            # Ensure directory exists
+            save_dir = self.save_dir_var.get()
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                print(f"Created directory: {save_dir}")
+            
+            # Save the image
+            self.last_image.save(filepath, self.format_var.get())
+            self.last_image_path = filepath
+            print(f"Successfully saved: {filepath}")
+            
+        except Exception as e:
+            print(f"Auto-save failed: {e}")
+            self.status_var.set("Capture successful but auto-save failed")
 
     def save_screenshot(self):
         if self.last_image is None:
@@ -208,7 +309,7 @@ class ScreenCaptureApp:
             self.last_image_path = path
             self.status_var.set(f"Saved screenshot: {os.path.basename(path)}")
             self._update_preview(path)
-
+    
     def copy_to_clipboard(self):
         if self.last_image is None:
             self.status_var.set("No screenshot to copy")
