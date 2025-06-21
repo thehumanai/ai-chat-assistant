@@ -104,7 +104,15 @@ class ScreenCaptureApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Screen Capture & Recording App")
-        self.root.geometry("800x500")
+        self.root.geometry("500x800")
+        
+        # Position window in bottom-left corner
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = 0
+        y = screen_height - 800
+        self.root.geometry(f"500x800+{x}+{y}")
+        
         self.settings = Settings()
         self.last_image = None
         self.last_image_path = None
@@ -114,131 +122,136 @@ class ScreenCaptureApp:
 
         style = ttk.Style()
         style.theme_use('clam')
-        
+
         main_frame = ttk.Frame(root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Title
-        title_label = ttk.Label(main_frame, text="Screen Capture & Recording App", font=('Arial', 18, 'bold'))
+        title_label = ttk.Label(main_frame, text="Screen Capture & Recording App", font=('Arial', 14, 'bold'))
         title_label.pack(pady=(0, 10))
 
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(main_frame)
-        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        # Create two-column layout
+        content_frame = ttk.Frame(main_frame)
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        content_frame.columnconfigure(1, weight=1)  # Right column expands
 
-        # Image capture tab
-        self.create_image_tab()
+        # Left column - Capture buttons
+        self.create_left_column(content_frame)
         
-        # Video recording tab
-        self.create_video_tab()
+        # Right column - Preview and options
+        self.create_right_column(content_frame)
 
-        # File format and save location
-        options_frame = ttk.Frame(main_frame)
-        options_frame.pack(fill=tk.X, pady=(10, 0))
-        self._add_options(options_frame)
-        
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(fill=tk.X, pady=(10, 0))
 
-    def create_image_tab(self):
-        image_frame = ttk.Frame(self.notebook)
-        self.notebook.add(image_frame, text="Image Capture")
+    def create_left_column(self, parent):
+        """Create left column with capture buttons"""
+        left_frame = ttk.Frame(parent)
+        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         
-        # Image capture buttons
-        img_btn_frame = ttk.LabelFrame(image_frame, text="Image Capture", padding="10")
-        img_btn_frame.pack(fill=tk.X, pady=(0, 10))
+        # Image capture section
+        img_frame = ttk.LabelFrame(left_frame, text="Image Capture", padding="5")
+        img_frame.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Button(img_btn_frame, text="Capture Full Screen", 
-                  command=self.capture_full_screen).pack(side=tk.LEFT, padx=5)
-        ttk.Button(img_btn_frame, text="Capture Selected Area", 
-                  command=self.capture_selected_area).pack(side=tk.LEFT, padx=5)
-        ttk.Button(img_btn_frame, text="Capture Active Window", 
-                  command=self.capture_active_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(img_btn_frame, text="Save Screenshot", 
-                  command=self.save_screenshot).pack(side=tk.LEFT, padx=5)
-        ttk.Button(img_btn_frame, text="Copy to Clipboard", 
-                  command=self.copy_to_clipboard).pack(side=tk.LEFT, padx=5)
-        ttk.Button(img_btn_frame, text="Open Last Screenshot", 
-                  command=self.open_last_screenshot).pack(side=tk.LEFT, padx=5)
+        ttk.Button(img_frame, text="Full Screen", 
+                  command=self.capture_full_screen, width=15).pack(fill=tk.X, pady=2)
+        ttk.Button(img_frame, text="Selected Area", 
+                  command=self.capture_selected_area, width=15).pack(fill=tk.X, pady=2)
+        ttk.Button(img_frame, text="Active Window", 
+                  command=self.capture_active_window, width=15).pack(fill=tk.X, pady=2)
+        ttk.Button(img_frame, text="Save Screenshot", 
+                  command=self.save_screenshot, width=15).pack(fill=tk.X, pady=2)
+        ttk.Button(img_frame, text="Copy to Clipboard", 
+                  command=self.copy_to_clipboard, width=15).pack(fill=tk.X, pady=2)
+        ttk.Button(img_frame, text="Open Last Screenshot", 
+                  command=self.open_last_screenshot, width=15).pack(fill=tk.X, pady=2)
+
+        # Video recording section
+        video_frame = ttk.LabelFrame(left_frame, text="Video Recording", padding="5")
+        video_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.record_btn = ttk.Button(video_frame, text="Start Recording", 
+                                   command=self.start_recording, width=15)
+        self.record_btn.pack(fill=tk.X, pady=2)
+        
+        self.stop_btn = ttk.Button(video_frame, text="Stop Recording", 
+                                 command=self.stop_recording, state='disabled', width=15)
+        self.stop_btn.pack(fill=tk.X, pady=2)
+        
+        ttk.Button(video_frame, text="Open Last Video", 
+                  command=self.open_last_video, width=15).pack(fill=tk.X, pady=2)
+        
+        # Recording status and timer
+        self.recording_status_var = tk.StringVar(value="Not Recording")
+        recording_status_label = ttk.Label(video_frame, textvariable=self.recording_status_var,
+                                         font=('Arial', 9, 'bold'))
+        recording_status_label.pack(pady=2)
+        
+        self.timer_var = tk.StringVar(value="00:00")
+        timer_label = ttk.Label(video_frame, textvariable=self.timer_var,
+                              font=('Arial', 10, 'bold'))
+        timer_label.pack(pady=2)
+
+        # Settings and Exit buttons
+        control_frame = ttk.Frame(left_frame)
+        control_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        ttk.Button(control_frame, text="Settings", 
+                  command=self.open_settings, width=15).pack(fill=tk.X, pady=2)
+        ttk.Button(control_frame, text="Exit", 
+                  command=self.root.quit, width=15).pack(fill=tk.X, pady=2)
+
+    def create_right_column(self, parent):
+        """Create right column with preview and options"""
+        right_frame = ttk.Frame(parent)
+        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right_frame.columnconfigure(0, weight=1)
+        right_frame.rowconfigure(1, weight=1)
 
         # Preview area
-        preview_frame = ttk.LabelFrame(image_frame, text="Image Preview", padding="10")
-        preview_frame.pack(fill=tk.BOTH, expand=True)
+        preview_frame = ttk.LabelFrame(right_frame, text="Preview", padding="5")
+        preview_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        preview_frame.columnconfigure(0, weight=1)
+        preview_frame.rowconfigure(0, weight=1)
+        
         self.preview_label = ttk.Label(preview_frame)
-        self.preview_label.pack(expand=True)
+        self.preview_label.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-    def create_video_tab(self):
-        video_frame = ttk.Frame(self.notebook)
-        self.notebook.add(video_frame, text="Video Recording")
+        # Options section
+        options_frame = ttk.LabelFrame(right_frame, text="Options", padding="5")
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        # Video recording controls
-        video_controls_frame = ttk.LabelFrame(video_frame, text="Video Recording", padding="10")
-        video_controls_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        # Recording buttons
-        self.record_btn = ttk.Button(video_controls_frame, text="Start Recording", 
-                                   command=self.start_recording)
-        self.record_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.stop_btn = ttk.Button(video_controls_frame, text="Stop Recording", 
-                                 command=self.stop_recording, state='disabled')
-        self.stop_btn.pack(side=tk.LEFT, padx=5)
-        
-        ttk.Button(video_controls_frame, text="Open Last Video", 
-                  command=self.open_last_video).pack(side=tk.LEFT, padx=5)
-        
-        # Recording status
-        self.recording_status_var = tk.StringVar(value="Not Recording")
-        recording_status_label = ttk.Label(video_controls_frame, 
-                                         textvariable=self.recording_status_var,
-                                         font=('Arial', 10, 'bold'))
-        recording_status_label.pack(side=tk.RIGHT, padx=5)
-        
-        # Recording timer
-        self.timer_var = tk.StringVar(value="00:00")
-        timer_label = ttk.Label(video_controls_frame, textvariable=self.timer_var,
-                              font=('Arial', 12, 'bold'))
-        timer_label.pack(side=tk.RIGHT, padx=5)
-        
-        # Video preview area
-        video_preview_frame = ttk.LabelFrame(video_frame, text="Video Preview", padding="10")
-        video_preview_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Placeholder for video preview
-        video_placeholder = ttk.Label(video_preview_frame, 
-                                    text="Video preview will appear here\nwhen recording starts",
-                                    font=('Arial', 12))
-        video_placeholder.pack(expand=True)
-
-    def _add_options(self, parent):
         # Image format
-        ttk.Label(parent, text="Image Format:").pack(side=tk.LEFT)
+        format_frame = ttk.Frame(options_frame)
+        format_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(format_frame, text="Image Format:").pack(side=tk.LEFT)
         self.format_var = tk.StringVar(value=self.settings.save_format)
-        format_menu = ttk.Combobox(parent, textvariable=self.format_var, 
-                                 values=["PNG", "JPG"], width=5, state="readonly")
-        format_menu.pack(side=tk.LEFT, padx=5)
+        format_menu = ttk.Combobox(format_frame, textvariable=self.format_var, 
+                                 values=["PNG", "JPG"], width=8, state="readonly")
+        format_menu.pack(side=tk.RIGHT)
         format_menu.bind('<<ComboboxSelected>>', self.update_format)
 
         # Video format
-        ttk.Label(parent, text="Video Format:").pack(side=tk.LEFT, padx=(20, 0))
+        video_format_frame = ttk.Frame(options_frame)
+        video_format_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(video_format_frame, text="Video Format:").pack(side=tk.LEFT)
         self.video_format_var = tk.StringVar(value=self.settings.video_format)
-        video_format_menu = ttk.Combobox(parent, textvariable=self.video_format_var,
-                                       values=["MP4", "AVI", "MOV"], width=5, state="readonly")
-        video_format_menu.pack(side=tk.LEFT, padx=5)
+        video_format_menu = ttk.Combobox(video_format_frame, textvariable=self.video_format_var,
+                                       values=["MP4", "AVI", "MOV"], width=8, state="readonly")
+        video_format_menu.pack(side=tk.RIGHT)
         video_format_menu.bind('<<ComboboxSelected>>', self.update_video_format)
 
         # Save location
-        ttk.Label(parent, text="Save Location:").pack(side=tk.LEFT, padx=(20, 0))
+        save_frame = ttk.Frame(options_frame)
+        save_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(save_frame, text="Save Location:").pack(side=tk.LEFT)
         self.save_dir_var = tk.StringVar(value=self.settings.save_dir)
-        save_dir_entry = ttk.Entry(parent, textvariable=self.save_dir_var, width=30)
-        save_dir_entry.pack(side=tk.LEFT, padx=5)
-        ttk.Button(parent, text="Browse", command=self.browse_save_dir).pack(side=tk.LEFT, padx=5)
-
-        # Settings and Exit buttons
-        ttk.Button(parent, text="Settings", command=self.open_settings).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(parent, text="Exit", command=self.root.quit).pack(side=tk.RIGHT, padx=5)
+        save_dir_entry = ttk.Entry(save_frame, textvariable=self.save_dir_var, width=20)
+        save_dir_entry.pack(side=tk.LEFT, padx=(5, 5))
+        ttk.Button(save_frame, text="Browse", 
+                  command=self.browse_save_dir, width=8).pack(side=tk.RIGHT)
 
     # --- Image Capture Actions ---
     def capture_full_screen(self):
@@ -421,12 +434,6 @@ This would open a proper settings dialog in a real implementation."""
 def main():
     root = tk.Tk()
     app = ScreenCaptureApp(root)
-    # Set window size and position: 500px width, 800px height, bottom-left
-    width = 500
-    height = 800
-    x = 0
-    y = root.winfo_screenheight() - height
-    root.geometry(f"{width}x{height}+{x}+{y}")
     root.mainloop()
 
 if __name__ == "__main__":
