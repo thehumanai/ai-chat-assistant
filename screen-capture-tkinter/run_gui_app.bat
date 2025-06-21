@@ -1,5 +1,5 @@
 @echo off
-title Screen Capture App
+title Screen Capture & Recording App
 cd /d "%~dp0"
 python run.py
 pause 
