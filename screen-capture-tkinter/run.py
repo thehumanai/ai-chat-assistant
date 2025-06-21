@@ -485,14 +485,16 @@ class ScreenCaptureApp:
                 self.frames_captured += 1
                 
                 # Update progress display
-                segments_created = getattr(self, 'segments_created', 0)
-                self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {segments_created}")
+                self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {self.segments_created}")
                 
                 # Check if we need to save a video segment (every X seconds = Y frames)
                 frames_per_video = self.frames_per_second * self.video_duration_seconds  # 24 fps * seconds
+                print(f"Debug: {len(self.captured_frames)} frames captured, need {frames_per_video} for segment")
                 if len(self.captured_frames) >= frames_per_video:
-                    self.status_var.set(f"Saving video segment {segments_created + 1}...")
+                    print(f"Debug: Saving video segment {self.segments_created + 1} with {len(self.captured_frames)} frames")
+                    self.status_var.set(f"Saving video segment {self.segments_created + 1}...")
                     self._save_video_segment()
+                    self.segments_created += 1  # Increment segments counter
                     self.current_video_start_time = time.time()
                 
                 # Wait for next frame
@@ -542,6 +544,9 @@ class ScreenCaptureApp:
             self.captured_frames = []
             
             self.status_var.set(f"Video segment saved: {video_filename}")
+            
+            # Update video progress
+            self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {self.segments_created}")
             
         except Exception as e:
             print(f"Error saving video segment: {e}")
@@ -621,9 +626,7 @@ class ScreenCaptureApp:
                 print(f"Video created successfully: {output_path} ({file_size:.1f} MB)")
                 
                 # Update video progress
-                segments_created = getattr(self, 'segments_created', 0) + 1
-                self.segments_created = segments_created
-                self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {segments_created}")
+                self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {self.segments_created}")
             else:
                 raise Exception("Video file was not created or is empty")
                 
