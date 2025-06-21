@@ -21,8 +21,8 @@ class Settings:
         self.video_format = "MP4"
         self.save_dir = os.path.join(os.getcwd(), "saved")
         self.video_duration_seconds = 10  # Default 10 seconds for debugging
-        
-        # Resolution settings
+        self.fps = 24  # Default 24 fps
+        self.clip_duration_seconds = 5  # Default 5 seconds per clip
         self.resolution_width = 1280  # 720p default
         self.resolution_height = 720
         self.resolution_preset = "720p"
@@ -38,6 +38,8 @@ class Settings:
                     self.video_format = data.get('video_format', self.video_format)
                     self.save_dir = data.get('save_dir', self.save_dir)
                     self.video_duration_seconds = data.get('video_duration_seconds', self.video_duration_seconds)
+                    self.fps = data.get('fps', self.fps)
+                    self.clip_duration_seconds = data.get('clip_duration_seconds', self.clip_duration_seconds)
                     self.resolution_width = data.get('resolution_width', self.resolution_width)
                     self.resolution_height = data.get('resolution_height', self.resolution_height)
                     self.resolution_preset = data.get('resolution_preset', self.resolution_preset)
@@ -51,6 +53,8 @@ class Settings:
                 'video_format': self.video_format,
                 'save_dir': self.save_dir,
                 'video_duration_seconds': self.video_duration_seconds,
+                'fps': self.fps,
+                'clip_duration_seconds': self.clip_duration_seconds,
                 'resolution_width': self.resolution_width,
                 'resolution_height': self.resolution_height,
                 'resolution_preset': self.resolution_preset
@@ -98,7 +102,8 @@ class ScreenCaptureApp:
         self.is_recording = False
         self.recording_thread = None
         self.frames_captured = 0
-        self.frames_per_second = 24  # Changed from frames_per_minute to frames_per_second
+        self.frames_per_second = self.settings.fps  # Use FPS from settings
+        self.clip_duration_seconds = self.settings.clip_duration_seconds  # Use clip duration from settings
         self.video_duration_seconds = self.settings.video_duration_seconds
         self.captured_frames = []
         self.current_video_start_time = None
@@ -251,6 +256,22 @@ class ScreenCaptureApp:
         duration_entry = ttk.Entry(duration_frame, textvariable=duration_var, width=10)
         duration_entry.pack(side=tk.RIGHT)
         
+        # FPS
+        fps_frame = ttk.Frame(options_frame)
+        fps_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(fps_frame, text="FPS:").pack(side=tk.LEFT)
+        fps_var = tk.StringVar(value=str(self.settings.fps))
+        fps_entry = ttk.Entry(fps_frame, textvariable=fps_var, width=10)
+        fps_entry.pack(side=tk.RIGHT)
+        
+        # Clip duration
+        clip_duration_frame = ttk.Frame(options_frame)
+        clip_duration_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(clip_duration_frame, text="Clip Duration (seconds):").pack(side=tk.LEFT)
+        clip_duration_var = tk.StringVar(value=str(self.settings.clip_duration_seconds))
+        clip_duration_entry = ttk.Entry(clip_duration_frame, textvariable=clip_duration_var, width=10)
+        clip_duration_entry.pack(side=tk.RIGHT)
+
         # Resolution preset
         resolution_preset_frame = ttk.Frame(options_frame)
         resolution_preset_frame.pack(fill=tk.X, pady=2)
@@ -446,7 +467,7 @@ class ScreenCaptureApp:
             # Start timer update
             self._update_timer()
             
-            self.status_var.set(f"Recording started - capturing {self.frames_per_second} fps, saving {self.video_duration_seconds}-second segments")
+            self.status_var.set(f"Recording started - capturing {self.frames_per_second} fps, saving {self.clip_duration_seconds}-second clips")
 
     def stop_recording(self):
         """Stop video recording and save final video segment"""
@@ -488,11 +509,11 @@ class ScreenCaptureApp:
                 self.video_progress_var.set(f"Frames: {self.frames_captured} | Segments: {self.segments_created}")
                 
                 # Check if we need to save a video segment (every X seconds = Y frames)
-                frames_per_video = self.frames_per_second * self.video_duration_seconds  # 24 fps * seconds
-                print(f"Debug: {len(self.captured_frames)} frames captured, need {frames_per_video} for segment")
-                if len(self.captured_frames) >= frames_per_video:
-                    print(f"Debug: Saving video segment {self.segments_created + 1} with {len(self.captured_frames)} frames")
-                    self.status_var.set(f"Saving video segment {self.segments_created + 1}...")
+                frames_per_clip = self.frames_per_second * self.clip_duration_seconds  # e.g., 24 fps * 5 seconds = 120 frames
+                print(f"Debug: {len(self.captured_frames)} frames captured, need {frames_per_clip} for clip")
+                if len(self.captured_frames) >= frames_per_clip:
+                    print(f"Debug: Saving video clip {self.segments_created + 1} with {len(self.captured_frames)} frames")
+                    self.status_var.set(f"Saving video clip {self.segments_created + 1}...")
                     self._save_video_segment()
                     self.segments_created += 1  # Increment segments counter
                     self.current_video_start_time = time.time()
@@ -724,6 +745,22 @@ class ScreenCaptureApp:
         duration_entry = ttk.Entry(duration_frame, textvariable=duration_var, width=10)
         duration_entry.pack(side=tk.RIGHT)
         
+        # FPS
+        fps_frame = ttk.Frame(main_frame)
+        fps_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(fps_frame, text="FPS:").pack(side=tk.LEFT)
+        fps_var = tk.StringVar(value=str(self.settings.fps))
+        fps_entry = ttk.Entry(fps_frame, textvariable=fps_var, width=10)
+        fps_entry.pack(side=tk.RIGHT)
+        
+        # Clip duration
+        clip_duration_frame = ttk.Frame(main_frame)
+        clip_duration_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(clip_duration_frame, text="Clip Duration (seconds):").pack(side=tk.LEFT)
+        clip_duration_var = tk.StringVar(value=str(self.settings.clip_duration_seconds))
+        clip_duration_entry = ttk.Entry(clip_duration_frame, textvariable=clip_duration_var, width=10)
+        clip_duration_entry.pack(side=tk.RIGHT)
+        
         # Resolution preset
         resolution_preset_frame = ttk.Frame(main_frame)
         resolution_preset_frame.pack(fill=tk.X, pady=5)
@@ -785,6 +822,18 @@ class ScreenCaptureApp:
                     messagebox.showerror("Error", "Video duration must be between 1 and 3600 seconds (1 hour)")
                     return
                 
+                # Validate FPS
+                fps = int(fps_var.get())
+                if fps < 1 or fps > 60:
+                    messagebox.showerror("Error", "FPS must be between 1 and 60")
+                    return
+                
+                # Validate clip duration
+                clip_duration = int(clip_duration_var.get())
+                if clip_duration < 1 or clip_duration > 300:
+                    messagebox.showerror("Error", "Clip duration must be between 1 and 300 seconds (5 minutes)")
+                    return
+                
                 # Validate resolution
                 width = int(width_var.get())
                 height = int(height_var.get())
@@ -804,12 +853,16 @@ class ScreenCaptureApp:
                 self.settings.video_format = video_format_var.get()
                 self.settings.save_dir = save_dir_var.get()
                 self.settings.video_duration_seconds = duration
+                self.settings.fps = fps
+                self.settings.clip_duration_seconds = clip_duration
                 self.settings.resolution_width = width
                 self.settings.resolution_height = height
                 self.settings.resolution_preset = preset
                 
                 # Update app variables
                 self.video_duration_seconds = duration
+                self.frames_per_second = fps
+                self.clip_duration_seconds = clip_duration
                 self.format_var.set(format_var.get())
                 self.video_format_var.set(video_format_var.get())
                 self.save_dir_var.set(save_dir_var.get())
